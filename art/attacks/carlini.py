@@ -530,9 +530,10 @@ class CarliniLInfMethod(Attack):
             # if untargeted, optimize for making any other class most likely
             loss = np.maximum(z_target - z_other + self.confidence, np.zeros(x_adv.shape[0]))
 
-        print(loss, dists)
+        print(loss.mean(), dists.mean())
         loss = loss + self.beta * dists
-        print(loss)
+        print(loss.mean())
+        print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
         return z_predicted, loss
 
     def _loss_gradient(self, z_logits, target, x_adv, x_adv_tanh, clip_min, clip_max):  # lgtm [py/similar-function]
