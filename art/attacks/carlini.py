@@ -495,7 +495,7 @@ class CarliniLInfMethod(Attack):
         ###################################################################
         self.beta = beta
         X_train_samples = np.random.permutation(X_train)[:nb_samples]
-        preds_train = self.classifier.predict(np.array(X_train_samples, dtype=NUMPY_DTYPE), logits=False)
+        preds_train = self.classifier.predict(np.array(X_train_samples, dtype=NUMPY_DTYPE), logits=True)
         self.nn = NearestNeighbors()
         self.nn.fit(preds_train)
         ###################################################################
