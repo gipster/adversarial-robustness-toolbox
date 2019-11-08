@@ -519,8 +519,8 @@ class CarliniLInfMethod(Attack):
         #################################################################################################
         p_predicted = self.classifier.predict(np.array(x_adv, dtype=NUMPY_DTYPE), logits=False,
                                               batch_size=self.batch_size)
-        dists, _ = self.nn.kneighbors(p_predicted, n_neighbors=1)
-        dists = np.squeeze(dists)
+        dists, _ = self.nn.kneighbors(p_predicted, n_neighbors=100)
+        dists = np.mean(dists, axis=1)
         #################################################################################################
 
         if self.targeted:
@@ -570,6 +570,26 @@ class CarliniLInfMethod(Attack):
         loss_gradient *= (1 - np.square(np.tanh(x_adv_tanh))) / (2 * self._tanh_smoother)
 
         return loss_gradient
+
+########################################################################################################################
+    def _dist_grad(self, x_adv, delta):
+
+        pertubation = np.random.random_sample(x_adv.shape)
+        preds = self.classifier.predict(np.array(x_adv, dtype=NUMPY_DTYPE), logits=False)
+        preds_plus = self.classifier.predict(np.array(x_adv + delta * pertubation, dtype=NUMPY_DTYPE), logits=False)
+        preds_minus = self.classifier.predict(np.array(x_adv - delta * pertubation, dtype=NUMPY_DTYPE), logits=False)
+
+        dist, _ = self.nn.kneighbors(preds, n_neighbors=100)
+        dist_plus, _ = self.nn.kneighbors(preds_plus, n_neighbors=100)
+        dist_minus, _ = self.nn.kneighbors(preds_minus, n_neighbors=100)
+
+        dist, dist_plus, dist_minus = np.mean(dist, axis=1), np.mean(dist_plus, axis=1), np.mean(dist_minus, axis=1)
+
+        gradient = (dist_plus - dist_minus) / delta
+        print('======',gradient)
+
+        return gradient
+########################################################################################################################
 
     def generate(self, x, y=None, **kwargs):
         """
@@ -639,6 +659,9 @@ class CarliniLInfMethod(Attack):
                 logger.debug('Compute loss gradient')
                 perturbation_tanh = -self._loss_gradient(z_logits[active], y_batch[active], x_adv_batch[active],
                                                          x_adv_batch_tanh[active], clip_min[active], clip_max[active])
+                #################################################################################
+                perturbation_tanh = perturbation_tanh - self._dist_grad(x_adv_batch[active], 0.01)
+                ##################################################################################
 
                 # perform line search to optimize perturbation
                 # first, halve the learning rate until perturbation actually decreases the loss:
