@@ -520,6 +520,7 @@ class CarliniLInfMethod(Attack):
         p_predicted = self.classifier.predict(np.array(x_adv, dtype=NUMPY_DTYPE), logits=False,
                                               batch_size=self.batch_size)
         dists, _ = self.nn.kneighbors(p_predicted, n_neighbors=1)
+        dists = np.squeeze(dists)
         #################################################################################################
 
         if self.targeted:
