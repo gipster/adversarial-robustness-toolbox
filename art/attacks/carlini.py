@@ -660,7 +660,7 @@ class CarliniLInfMethod(Attack):
                 perturbation_tanh = -self._loss_gradient(z_logits[active], y_batch[active], x_adv_batch[active],
                                                          x_adv_batch_tanh[active], clip_min[active], clip_max[active])
                 #################################################################################
-                perturbation_tanh = perturbation_tanh - self._dist_grad(x_adv_batch[active], 0.01)
+                #perturbation_tanh = perturbation_tanh - self._dist_grad(x_adv_batch[active], 0.01)
                 ##################################################################################
 
                 # perform line search to optimize perturbation
