@@ -34,6 +34,7 @@ import numpy as np
 from art import NUMPY_DTYPE
 from art.attacks.attack import Attack
 from art.utils import compute_success, get_labels_np_array, tanh_to_original, original_to_tanh
+from sklearn.neighbors import NearestNeighbors
 
 logger = logging.getLogger(__name__)
 
@@ -443,7 +444,9 @@ class CarliniLInfMethod(Attack):
     attack_params = Attack.attack_params + ['confidence', 'targeted', 'learning_rate', 'max_iter',
                                             'max_halving', 'max_doubling', 'eps', 'batch_size']
 
-    def __init__(self, classifier, confidence=0.0, targeted=False, learning_rate=0.01,
+    def __init__(self, classifier,
+                 X_train, nb_samples, beta=0.1,
+                 confidence=0.0, targeted=False, learning_rate=0.01,
                  max_iter=10, max_halving=5, max_doubling=5, eps=0.3, batch_size=128):
         """
         Create a Carlini L_Inf attack instance.
@@ -489,6 +492,14 @@ class CarliniLInfMethod(Attack):
         # Smooth arguments of arctanh by multiplying with this constant to avoid division by zero:
         self._tanh_smoother = 0.999999
 
+        ###################################################################
+        self.beta = beta
+        X_train_samples = np.random.permutation(X_train)[:nb_samples]
+        preds_train = self.classifier.predict(X_train_samples)
+        self.nn = NearestNeighbors()
+        self.nn.fit(preds_train)
+        ###################################################################
+
     def _loss(self, x_adv, target):
         """
         Compute the objective function value.
@@ -505,6 +516,12 @@ class CarliniLInfMethod(Attack):
         z_target = np.sum(z_predicted * target, axis=1)
         z_other = np.max(z_predicted * (1 - target) + (np.min(z_predicted, axis=1) - 1)[:, np.newaxis] * target, axis=1)
 
+        #################################################################################################
+        p_predicted = self.classifier.predict(np.array(x_adv, dtype=NUMPY_DTYPE), logits=False,
+                                              batch_size=self.batch_size)
+        dists, _ = self.nn.kneighbors(p_predicted, n_neighbors=1)
+        #################################################################################################
+
         if self.targeted:
             # if targeted, optimize for making the target class most likely
             loss = np.maximum(z_other - z_target + self.confidence, np.zeros(x_adv.shape[0]))
@@ -512,6 +529,9 @@ class CarliniLInfMethod(Attack):
             # if untargeted, optimize for making any other class most likely
             loss = np.maximum(z_target - z_other + self.confidence, np.zeros(x_adv.shape[0]))
 
+        print(loss, dists)
+        loss = loss + self.beta * dists
+        print(loss)
         return z_predicted, loss
 
     def _loss_gradient(self, z_logits, target, x_adv, x_adv_tanh, clip_min, clip_max):  # lgtm [py/similar-function]
