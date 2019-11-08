@@ -476,7 +476,7 @@ class CarliniLInfMethod(Attack):
         :type expectation: :class:`.ExpectationOverTransformations`
         """
         super(CarliniLInfMethod, self).__init__(classifier)
-
+        print('800A')
         kwargs = {'confidence': confidence,
                   'targeted': targeted,
                   'learning_rate': learning_rate,
